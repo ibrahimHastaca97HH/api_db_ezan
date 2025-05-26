@@ -1,6 +1,8 @@
 services:
   - type: web
-    name: ezan-api
+    name: vakitgeldi-api
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: bash start.sh
+    plan: free
+    buildCommand: ""
+    startCommand: ./start.sh
+    envVars: []
