@@ -16,34 +16,53 @@ def fetch_or_cache_vakitler(il, ilce):
     if result:
         return json.loads(result['data'])
 
-    # Yoksa scrape et
+    # Yoksa Diyanet'ten çek
     url = f"https://www.diyanet.gov.tr/tr-TR/namazvakitleri?il={il}"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
 
-    times = soup.find_all("div", class_="tpt-time")
-    saatler = [v.text.strip() for v in times]
+    # Tabloyu bul
+    table = soup.find("table", id="today-pray-times")
+    if not table:
+        raise Exception("Namaz vakit tablosu bulunamadı. Sayfa yapısı değişmiş olabilir.")
 
-    # Diyanet sıralaması genellikle: İmsak, Güneş, Öğle, İkindi, Akşam, Yatsı
-    if len(saatler) < 6:
-        raise Exception("Namaz vakitleri eksik veya Diyanet sayfası değişmiş olabilir.")
+    rows = table.find_all("tr")
+    vakit_data_raw = {}
 
-    vakit_list = ["Imsak", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]
-    vakit_data = dict(zip(vakit_list, saatler))
+    for row in rows:
+        cols = row.find_all("td")
+        if len(cols) == 2:
+            name = cols[0].text.strip()
+            time = cols[1].text.strip()
+            vakit_data_raw[name] = time
+
+    # Türkçe -> İngilizce çeviri
+    translation = {
+        "İmsak": "Imsak",
+        "Güneş": "Sunrise",
+        "Öğle": "Dhuhr",
+        "İkindi": "Asr",
+        "Akşam": "Maghrib",
+        "Yatsı": "Isha"
+    }
+
+    translated_data = {}
+    for tr_key, en_key in translation.items():
+        if tr_key in vakit_data_raw:
+            translated_data[en_key] = vakit_data_raw[tr_key]
+        else:
+            raise Exception(f"{tr_key} vakti bulunamadı. Sayfa yapısı değişmiş olabilir.")
 
     # Ek sanal vakitler
-    try:
-        vakit_data.update({
-            "Fajr": vakit_data["Imsak"],
-            "Sunset": vakit_data["Maghrib"],
-            "Midnight": "00:39",
-            "Firstthird": "23:04",
-            "Lastthird": "02:14"
-        })
-    except KeyError as e:
-        raise Exception(f"Beklenen vakit verisi eksik: {str(e)}")
+    translated_data.update({
+        "Fajr": translated_data["Imsak"],
+        "Sunset": translated_data["Maghrib"],
+        "Midnight": "00:39",
+        "Firstthird": "23:04",
+        "Lastthird": "02:14"
+    })
 
-    # Tarih bilgisi
+    # Tarih bilgileri
     miladi = datetime.today()
     hicri = convert.Gregorian(miladi.year, miladi.month, miladi.day).to_hijri()
 
@@ -51,10 +70,10 @@ def fetch_or_cache_vakitler(il, ilce):
         "konum": f"{il}, {ilce}, Turkey",
         "tarih": miladi.strftime("%d %B %Y"),
         "hicri": f"{hicri.day} {hicri.month_name()} {hicri.year}",
-        "vakitler": vakit_data
+        "vakitler": translated_data
     }
 
-    # Veritabanına ekle
+    # Veritabanına kaydet
     conn.execute(vakitler.insert().values(
         id=row_id,
         il=il,
