@@ -11,17 +11,20 @@ def fetch_or_cache_vakitler(il, ilce):
     today = date.today()
     row_id = f"{il.lower()}_{ilce.lower()}_{today.isoformat()}"
 
-    # Veritabanında var mı?
+    # Veritabanında kayıt var mı?
     result = conn.execute(select(vakitler).where(vakitler.c.id == row_id)).fetchone()
     if result:
         return json.loads(result['data'])
 
-    # Yoksa Diyanet'ten çek
+    # Diyanet'ten veri çek
     url = f"https://www.diyanet.gov.tr/tr-TR/namazvakitleri?il={il}"
     response = requests.get(url)
+    if response.status_code != 200:
+        raise Exception("Diyanet sayfasına ulaşılamıyor.")
+
     soup = BeautifulSoup(response.content, "html.parser")
 
-    # Tabloyu bul
+    # Namaz vakti tablosunu bul
     table = soup.find("table", id="today-pray-times")
     if not table:
         raise Exception("Namaz vakit tablosu bulunamadı. Sayfa yapısı değişmiş olabilir.")
@@ -53,23 +56,23 @@ def fetch_or_cache_vakitler(il, ilce):
         else:
             raise Exception(f"{tr_key} vakti bulunamadı. Sayfa yapısı değişmiş olabilir.")
 
-    # Ek sanal vakitler
+    # Sanal vakitler ekle
     translated_data.update({
         "Fajr": translated_data["Imsak"],
         "Sunset": translated_data["Maghrib"],
-        "Midnight": "00:39",
+        "Midnight": "00:39",     # Örnek değerler (gelişmiş hesaplama yapılabilir)
         "Firstthird": "23:04",
         "Lastthird": "02:14"
     })
 
-    # Tarih bilgileri
+    # Miladi ve Hicri tarih bilgileri
     miladi = datetime.today()
     hicri = convert.Gregorian(miladi.year, miladi.month, miladi.day).to_hijri()
 
     response_json = {
         "konum": f"{il}, {ilce}, Turkey",
         "tarih": miladi.strftime("%d %B %Y"),
-        "hicri": f"{hicri.day} {hicri.month_name()} {hicri.year}",
+        "hicri": f"{hicri.day} {hicri.month_name()} {hicri.year} AH",
         "vakitler": translated_data
     }
 
