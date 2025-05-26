@@ -17,3 +17,9 @@ def get_vakitler():
         return jsonify(result)
     except Exception as e:
         return jsonify({"hata": str(e)}), 500
+
+# === BU KISMI EKLE: Render'da port algılansın diye ===
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
