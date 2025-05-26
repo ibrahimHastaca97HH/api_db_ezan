@@ -9,8 +9,11 @@ def home():
 
 @app.route("/vakitler")
 def get_vakitler():
-    il = request.args.get("il", "Hatay")
-    ilce = request.args.get("ilce", "Yayladağı")
+    il = request.args.get("il")
+    ilce = request.args.get("ilce")
+
+    if not il or not ilce:
+        return jsonify({"hata": "Lütfen 'il' ve 'ilce' parametrelerini belirtin."}), 400
 
     try:
         result = fetch_or_cache_vakitler(il, ilce)
@@ -18,7 +21,7 @@ def get_vakitler():
     except Exception as e:
         return jsonify({"hata": str(e)}), 500
 
-# === BU KISMI EKLE: Render'da port algılansın diye ===
+# === Bu kısım Render için gereklidir ===
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
