@@ -22,18 +22,28 @@ def fetch_or_cache_vakitler(il, ilce):
     soup = BeautifulSoup(response.content, "html.parser")
 
     times = soup.find_all("div", class_="tpt-time")
-    vakit_list = ["Imsak", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]
     saatler = [v.text.strip() for v in times]
+
+    # Diyanet sıralaması genellikle: İmsak, Güneş, Öğle, İkindi, Akşam, Yatsı
+    if len(saatler) < 6:
+        raise Exception("Namaz vakitleri eksik veya Diyanet sayfası değişmiş olabilir.")
+
+    vakit_list = ["Imsak", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]
     vakit_data = dict(zip(vakit_list, saatler))
 
-    vakit_data.update({
-        "Fajr": vakit_data["Imsak"],
-        "Sunset": vakit_data["Maghrib"],
-        "Midnight": "00:39",
-        "Firstthird": "23:04",
-        "Lastthird": "02:14"
-    })
+    # Ek sanal vakitler
+    try:
+        vakit_data.update({
+            "Fajr": vakit_data["Imsak"],
+            "Sunset": vakit_data["Maghrib"],
+            "Midnight": "00:39",
+            "Firstthird": "23:04",
+            "Lastthird": "02:14"
+        })
+    except KeyError as e:
+        raise Exception(f"Beklenen vakit verisi eksik: {str(e)}")
 
+    # Tarih bilgisi
     miladi = datetime.today()
     hicri = convert.Gregorian(miladi.year, miladi.month, miladi.day).to_hijri()
 
