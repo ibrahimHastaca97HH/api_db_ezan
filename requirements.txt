@@ -1,5 +1,6 @@
-flask
+Flask
 requests
 beautifulsoup4
-hijri-converter
 sqlalchemy
+hijri-converter
+gunicorn
