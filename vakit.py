@@ -16,7 +16,7 @@ def fetch_or_cache_vakitler(il, ilce):
         return json.loads(result['data'])
 
     # Web sayfasından veriyi çek
-    url = f"https://www.diyanet.gov.tr/tr-TR/namazvakitleri?il={il}"
+    url = f"https://namazvakitleri.diyanet.gov.tr?il={il}"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
 
